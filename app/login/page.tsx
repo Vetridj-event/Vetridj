@@ -96,13 +96,13 @@ export default function LoginPage() {
                     <CardContent>
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email Address</Label>
+                                <Label htmlFor="email">Email or Mobile Number</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
                                     <Input
                                         id="email"
-                                        type="email"
-                                        placeholder="Enter your email"
+                                        type="text"
+                                        placeholder="email@example.com or 9876543210"
                                         className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 text-foreground placeholder:text-muted-foreground/50 transition-all"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
@@ -149,6 +149,18 @@ export default function LoginPage() {
                                     'Sign In'
                                 )}
                             </Button>
+
+                            <div className="text-center pt-4 border-t border-white/5">
+                                <p className="text-sm text-muted-foreground">
+                                    New to Vetri DJ?{' '}
+                                    <Link
+                                        href={`/register${typeof window !== 'undefined' ? new URLSearchParams(window.location.search).has('returnUrl') ? `?returnUrl=${new URLSearchParams(window.location.search).get('returnUrl')}` : '' : ''}`}
+                                        className="text-primary hover:underline font-bold"
+                                    >
+                                        Register Now
+                                    </Link>
+                                </p>
+                            </div>
                         </form>
                     </CardContent>
                 </Card>

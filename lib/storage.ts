@@ -162,11 +162,14 @@ export const storage = {
     },
 
     // Auth Helper
-    login: async (email: string, password: string): Promise<User | null> => {
+    login: async (identifier: string, password: string): Promise<User | null> => {
         try {
             const users = await storage.getUsers()
             if (!Array.isArray(users)) return null
-            return users.find(u => u.email === email && u.password === password) || null
+            return users.find(u =>
+                (u.email === identifier || u.phone === identifier || u.whatsapp === identifier) &&
+                u.password === password
+            ) || null
         } catch (error) {
             console.error('Login storage error:', error)
             return null
