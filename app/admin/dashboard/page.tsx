@@ -2,10 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { storage } from '@/lib/storage'
-import { DollarSign, Users, Calendar, TrendingUp, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Activity, BrainCircuit } from 'lucide-react'
+import { DollarSign, Users, Calendar as CalendarIcon, TrendingUp, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Activity, BrainCircuit } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Booking, FinanceRecord } from '@/types'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts'
+import { Calendar } from '@/components/ui/calendar'
 
 const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884d8'];
 
@@ -27,6 +28,7 @@ export default function DashboardPage() {
     const [chartData, setChartData] = useState<any[]>([])
     const [eventDistribution, setEventDistribution] = useState<any[]>([])
     const [recentBookings, setRecentBookings] = useState<Booking[]>([])
+    const [allBookings, setAllBookings] = useState<Booking[]>([])
 
     useEffect(() => {
         const loadDashboard = async () => {
@@ -100,6 +102,7 @@ export default function DashboardPage() {
             })))
 
             setRecentBookings(bookings.slice(0, 5))
+            setAllBookings(bookings)
         }
 
         loadDashboard()
@@ -152,7 +155,7 @@ export default function DashboardPage() {
 
                 <Card className="glass-dark border-white/5 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Calendar className="h-12 w-12" />
+                        <CalendarIcon className="h-12 w-12" />
                     </div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
@@ -251,6 +254,26 @@ export default function DashboardPage() {
                                 <Legend verticalAlign="bottom" height={36} />
                             </PieChart>
                         </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="col-span-3 glass-dark border-white/5 flex flex-col items-center">
+                    <CardHeader className="w-full">
+                        <CardTitle>Schedule Overview</CardTitle>
+                        <CardDescription>Booked dates</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Calendar
+                            mode="single"
+                            selected={new Date()}
+                            className="rounded-md border border-white/10"
+                            modifiers={{
+                                booked: allBookings.map(b => new Date(b.date))
+                            }}
+                            modifiersStyles={{
+                                booked: { fontWeight: 'bold', textDecoration: 'underline', color: 'var(--primary)' }
+                            }}
+                        />
                     </CardContent>
                 </Card>
             </div>

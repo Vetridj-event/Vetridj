@@ -24,7 +24,11 @@ import {
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, Filter, Trash, Edit, MessageSquare, IndianRupee, User as UserIcon } from 'lucide-react'
+import { Search, Plus, Filter, Trash, Edit, MessageSquare, IndianRupee, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import { format } from 'date-fns'
 
 export default function BookingsPage() {
     const [bookings, setBookings] = useState<Booking[]>([])
@@ -192,13 +196,34 @@ export default function BookingsPage() {
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="date" className="text-right">Date</Label>
-                                <Input
-                                    id="date"
-                                    type="date"
-                                    value={formData.date || ''}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="col-span-3 bg-white/5 border-white/10"
-                                />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "col-span-3 justify-start text-left font-normal bg-white/5 border-white/10",
+                                                !formData.date && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {formData.date ? format(new Date(formData.date), "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={formData.date ? new Date(formData.date) : undefined}
+                                            onSelect={(date) => date && setFormData({ ...formData, date: date.toISOString().split('T')[0] })}
+                                            initialFocus
+                                            modifiers={{
+                                                booked: bookings.map(b => new Date(b.date))
+                                            }}
+                                            modifiersStyles={{
+                                                booked: { textDecoration: 'underline', color: 'var(--primary)', fontWeight: 'bold' }
+                                            }}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="amount" className="text-right">Total Fee</Label>

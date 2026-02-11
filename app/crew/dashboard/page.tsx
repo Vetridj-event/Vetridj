@@ -7,7 +7,8 @@ import { Booking } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, MapPin, Clock } from 'lucide-react'
+import { Calendar } from '@/components/ui/calendar'
+import { Calendar as CalendarIcon, MapPin, Clock } from 'lucide-react'
 
 export default function CrewDashboard() {
     const { user } = useAuth()
@@ -35,8 +36,33 @@ export default function CrewDashboard() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="glass-dark border-white/10 flex flex-col items-center justify-center min-h-[300px]">
+                    <CardHeader className="w-full">
+                        <CardTitle className="text-center">My Schedule</CardTitle>
+                        <CardDescription className="text-center">Assigned Dates</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Calendar
+                            mode="single"
+                            selected={new Date()}
+                            className="rounded-md border border-white/10"
+                            modifiers={{
+                                assigned: myEvents.map(b => new Date(b.date))
+                            }}
+                            modifiersStyles={{
+                                assigned: {
+                                    fontWeight: 'bold',
+                                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                    color: '#22c55e',
+                                    borderRadius: '100%'
+                                }
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+
                 {upcomingEvents.length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-muted-foreground bg-white/5 rounded-lg border border-white/10">
+                    <div className="col-span-1 lg:col-span-2 text-center py-12 text-muted-foreground bg-white/5 rounded-lg border border-white/10 flex items-center justify-center">
                         No upcoming events assigned. Check with Admin.
                     </div>
                 ) : (
@@ -56,7 +82,7 @@ export default function CrewDashboard() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center gap-3 text-sm">
-                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                    <CalendarIcon className="w-4 h-4 text-muted-foreground" />
                                     <span>{new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-sm">
