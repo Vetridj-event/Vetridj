@@ -46,7 +46,10 @@ export default function RegisterPage() {
             })
 
             if (res.ok) {
-                router.push('/login?registered=true')
+                const params = new URLSearchParams(window.location.search)
+                const returnUrl = params.get('returnUrl')
+                const redirectPath = returnUrl ? `/login?registered=true&returnUrl=${encodeURIComponent(returnUrl)}` : '/login?registered=true'
+                router.push(redirectPath)
             } else {
                 const data = await res.json()
                 setError(data.error || 'Registration failed')

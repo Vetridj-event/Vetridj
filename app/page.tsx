@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/auth-context'
 import { storage } from '@/lib/storage'
 import { EventPackage } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -9,15 +11,30 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BookingModal } from '@/components/booking-modal'
 import { MusicalNotes } from '@/components/musical-notes'
-import { Music, Zap, Users, Phone, MapPin, Clock, Star, Video, Volume2, Sparkles, LayoutDashboard, LogIn, ChevronRight } from 'lucide-react'
+import { Music, Zap, Users, Phone, MapPin, Clock, Star, Video, Volume2, Sparkles, LayoutDashboard, LogIn, ChevronRight, User as UserIcon } from 'lucide-react'
 
 export default function Page() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [packages, setPackages] = useState<EventPackage[]>([])
+  const { user } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     storage.getPackages().then(setPackages)
-  }, [])
+    // Check for return URL actions
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('action') === 'book' && user) {
+      setIsBookingOpen(true)
+    }
+  }, [user])
+
+  const handleBookNow = () => {
+    if (user) {
+      setIsBookingOpen(true)
+    } else {
+      router.push('/login?returnUrl=/?action=book')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background relative selection:bg-primary/30 text-foreground overflow-x-hidden bg-mesh">
@@ -42,16 +59,29 @@ export default function Page() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button
-              asChild
-              size="lg"
-              className="bg-primary hover:bg-primary/90 text-background font-bold px-8 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.2)] hover:shadow-[0_0_40px_rgba(212,175,55,0.4)] hover:scale-105 transition-all duration-500 border-none group"
-            >
-              <Link href="/login" className="flex items-center gap-2">
-                <LogIn className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                Login
-              </Link>
-            </Button>
+            {user ? (
+              <Button
+                asChild
+                variant="ghost"
+                className="text-white hover:text-primary hover:bg-white/5"
+              >
+                <Link href={user.role === 'ADMIN' ? '/admin/dashboard' : '/customer/dashboard'} className="flex items-center gap-2">
+                  <UserIcon className="w-4 h-4" />
+                  {user.name}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-background font-bold px-8 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.2)] hover:shadow-[0_0_40px_rgba(212,175,55,0.4)] hover:scale-105 transition-all duration-500 border-none group"
+              >
+                <Link href="/login" className="flex items-center gap-2">
+                  <LogIn className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Login
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -78,7 +108,7 @@ export default function Page() {
 
               <div className="flex flex-wrap gap-5">
                 <Button
-                  onClick={() => setIsBookingOpen(true)}
+                  onClick={handleBookNow}
                   size="xl"
                   className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 text-background font-black rounded-2xl shadow-[0_20px_40px_rgba(212,175,55,0.15)] group relative overflow-hidden transition-all duration-500"
                 >
@@ -267,7 +297,7 @@ export default function Page() {
                     ))}
                   </ul>
                   <Button
-                    onClick={() => setIsBookingOpen(true)}
+                    onClick={handleBookNow}
                     size={pkg.isPopular ? "xl" : "lg"}
                     className={`w-full h-14 rounded-2xl transition-all duration-500 ${pkg.isPopular
                       ? 'h-16 rounded-3xl bg-background text-primary hover:bg-background/90 font-black shadow-xl'

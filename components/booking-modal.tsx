@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
+import { useAuth } from "@/context/auth-context"
 
 interface BookingModalProps {
   open: boolean
@@ -47,6 +48,7 @@ export function BookingModal({ open, onOpenChange }: BookingModalProps) {
     { size: 'Custom', sqft: 0, price: 0 }
   ]
 
+  const { user } = useAuth()
   const [djPackages, setDjPackages] = useState<EventPackage[]>([])
   const [existingBookings, setExistingBookings] = useState<Booking[]>([])
 
@@ -54,8 +56,17 @@ export function BookingModal({ open, onOpenChange }: BookingModalProps) {
     if (open) {
       storage.getPackages().then(setDjPackages)
       storage.getBookings().then(setExistingBookings)
+
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          clientName: user.name,
+          whatsappNumber: user.whatsapp || user.phone || '',
+          alternatePhone: user.phone !== user.whatsapp ? user.phone || '' : ''
+        }))
+      }
     }
-  }, [open])
+  }, [open, user])
 
   const calculateTotal = () => {
     let total = 0
@@ -125,7 +136,9 @@ ${formData.additionalNotes || 'None'}`
       amount: totalAmount,
       status: 'PENDING',
       djPackage: formData.djPackage,
-      additionalNotes: formData.additionalNotes
+      additionalNotes: formData.additionalNotes,
+      customerId: user?.id,
+      customerEmail: user?.email
     }
     await storage.addBooking(newBooking)
 

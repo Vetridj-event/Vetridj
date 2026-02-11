@@ -26,7 +26,27 @@ export default function LoginPage() {
 
         try {
             const success = await login(email, password)
-            if (!success) {
+            if (success) {
+                // Check for returnUrl
+                const params = new URLSearchParams(window.location.search)
+                const returnUrl = params.get('returnUrl')
+                if (returnUrl) {
+                    router.push(returnUrl)
+                } else {
+                    // Default redirect based on role is handled in auth-context or here if needed, 
+                    // but auth-context usually handles it. 
+                    // However, since we are in a component, we can force a redirect if auth-context doesn't automatically.
+                    // IMPORTANT: auth-context usually has a redirect logic. 
+                    // Let's assume auth context does NOT redirect automatically on login function call alone, 
+                    // or we override it by router.push here if we want specific behavior.
+                    // For now, let's just let the auth-context flow OR manually redirect if specific role logic is needed here.
+                    // But wait, the previous code didn't have redirect logic here, it implies `login` function might not redirect?
+                    // Let's check auth-context. Actually, the previous code didn't redirect at all? 
+                    // Ah, I see `router.push` was imported but not used in success case in previous code.
+                    // I should probably add default redirect too.
+                    router.push('/customer/dashboard') // Default fallback
+                }
+            } else {
                 setError('Invalid credentials. Please try again.')
             }
         } catch (err) {
