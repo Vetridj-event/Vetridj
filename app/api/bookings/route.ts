@@ -4,11 +4,15 @@ import Booking from '@/models/Booking';
 import { seedDatabase } from '@/lib/seed';
 import { logAction } from '@/lib/audit-logger';
 
-export async function GET() {
+export async function GET(request: Request) {
     await dbConnect();
     await seedDatabase();
     try {
-        const bookings = await Booking.find({}).sort({ date: -1 });
+        const { searchParams } = new URL(request.url);
+        const customerId = searchParams.get('customerId');
+
+        const filter = customerId ? { customerId } : {};
+        const bookings = await Booking.find(filter).sort({ date: -1 });
         return NextResponse.json(bookings);
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });

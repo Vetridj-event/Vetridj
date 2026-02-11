@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'CREW'
+export type Role = 'ADMIN' | 'CREW' | 'CUSTOMER'
 
 export interface User {
     id: string
@@ -7,6 +7,7 @@ export interface User {
     password?: string // In a real app, this would be hashed. For mock, we might simulate it.
     role: Role
     phone?: string
+    whatsapp?: string
     joinedDate: string
     avatar?: string
 }
@@ -21,10 +22,16 @@ export interface Booking {
     packageId?: string
     status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
     amount: number
+    advanceAmount?: number
+    receivedAmount?: number
+    balanceAmount?: number
     location?: string
+    customerId?: string // Reference to User ID
     crewAssigned?: string[] // Array of User IDs
     notes?: string
     checkInTime?: { [crewId: string]: string }
+    djPackage?: string
+    additionalNotes?: string
 }
 
 export interface InventoryItem {

@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Redirect based on role
             if (validUser.role === 'ADMIN') {
                 router.push('/admin/dashboard')
+            } else if (validUser.role === 'CUSTOMER') {
+                router.push('/customer/dashboard')
             } else {
                 router.push('/crew/dashboard')
             }
@@ -67,21 +69,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const isAdminRoute = pathname.startsWith('/admin')
         const isCrewRoute = pathname.startsWith('/crew')
+        const isCustomerRoute = pathname.startsWith('/customer')
 
-        if ((isAdminRoute || isCrewRoute) && !user) {
+        if ((isAdminRoute || isCrewRoute || isCustomerRoute) && !user) {
             router.push('/login')
             return
         }
 
         if (isAdminRoute && user?.role !== 'ADMIN') {
-            router.push('/crew/dashboard') // Fallback
+            if (user?.role === 'CUSTOMER') router.push('/customer/dashboard')
+            else router.push('/crew/dashboard')
         }
 
-        if (isCrewRoute && user?.role !== 'CREW' && user?.role !== 'ADMIN') { // Admin can view crew pages? Maybe not necessary but safe
-            // strict separation? 
-            if (user?.role === 'ADMIN') return // Allow admin to see crew pages? Let's say yes for now or strictly separate.
-            // For now, strict:
-            // router.push('/admin/dashboard')
+        if (isCrewRoute && user?.role !== 'CREW' && user?.role !== 'ADMIN') {
+            if (user?.role === 'CUSTOMER') router.push('/customer/dashboard')
+            else router.push('/admin/dashboard') // Should only happen if user is logged in but lost role
+        }
+
+        if (isCustomerRoute && user?.role !== 'CUSTOMER') {
+            if (user?.role === 'ADMIN') router.push('/admin/dashboard')
+            else router.push('/crew/dashboard')
         }
     }, [pathname, user, isLoading, router])
 

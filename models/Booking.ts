@@ -16,7 +16,11 @@ const BookingSchema = new Schema({
         default: 'PENDING'
     },
     amount: { type: Number, required: true },
+    advanceAmount: { type: Number, default: 0 },
+    receivedAmount: { type: Number, default: 0 },
+    balanceAmount: { type: Number, default: 0 },
     location: { type: String },
+    customerId: { type: String },
     crewAssigned: [{ type: String }],
     notes: { type: String },
     checkInTime: { type: Map, of: String },

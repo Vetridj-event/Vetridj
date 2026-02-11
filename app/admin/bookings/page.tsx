@@ -24,11 +24,12 @@ import {
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, Filter, Trash, Edit } from 'lucide-react'
+import { Search, Plus, Filter, Trash, Edit, MessageSquare, IndianRupee, User as UserIcon } from 'lucide-react'
 
 export default function BookingsPage() {
     const [bookings, setBookings] = useState<Booking[]>([])
     const [crewMembers, setCrewMembers] = useState<User[]>([])
+    const [customers, setCustomers] = useState<User[]>([])
     const [searchTerm, setSearchTerm] = useState('')
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
@@ -50,16 +51,33 @@ export default function BookingsPage() {
         ])
         setBookings(bks)
         setCrewMembers(usr.filter(u => u.role === 'CREW'))
+        setCustomers(usr.filter(u => u.role === 'CUSTOMER'))
+    }
+
+    const calculateBalance = (total: number, advance: number, received: number) => {
+        return total - (advance + received)
     }
 
     const handleSave = async () => {
+        const totalAmount = Number(formData.amount) || 0
+        const advance = Number(formData.advanceAmount) || 0
+        const received = Number(formData.receivedAmount) || 0
+        const balance = calculateBalance(totalAmount, advance, received)
+
+        const bookingData = {
+            ...formData,
+            amount: totalAmount,
+            advanceAmount: advance,
+            receivedAmount: received,
+            balanceAmount: balance
+        } as Booking
+
         if (editingBooking) {
-            await storage.updateBooking({ ...editingBooking, ...formData } as Booking)
+            await storage.updateBooking({ ...editingBooking, ...bookingData })
         } else {
             const newBooking: Booking = {
-                ...formData as Booking,
-                id: `bk-${Date.now()}`,
-                amount: Number(formData.amount) || 0
+                ...bookingData,
+                id: `bk-${Date.now()}`
             }
             await storage.addBooking(newBooking)
         }
@@ -67,6 +85,20 @@ export default function BookingsPage() {
         setIsDialogOpen(false)
         setEditingBooking(null)
         setFormData({ status: 'PENDING', date: new Date().toISOString().split('T')[0] })
+    }
+
+    const sendWhatsApp = (booking: Booking, type: 'REQUEST' | 'RECEIPT') => {
+        const phone = booking.customerPhone?.replace(/\D/g, '')
+        if (!phone) {
+            alert('Phone number missing!')
+            return
+        }
+
+        const message = type === 'REQUEST'
+            ? `Hello ${booking.customerName}, this is Vetri DJ. We are requesting a payment for your ${booking.eventType} on ${new Date(booking.date).toLocaleDateString()}. \n\nTotal: ₹${booking.amount}\nBalance Due: ₹${booking.balanceAmount}\n\nPlease pay to confirm your slot. Thank you!`
+            : `Hello ${booking.customerName}, we have received your payment of ₹${booking.receivedAmount} for the ${booking.eventType} on ${new Date(booking.date).toLocaleDateString()}. \n\nRemaining Balance: ₹${booking.balanceAmount}. \n\nThank you for choosing Vetri DJ!`
+
+        window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank')
     }
 
     const openEdit = (booking: Booking) => {
@@ -77,8 +109,7 @@ export default function BookingsPage() {
 
     const handleDelete = (id: string) => {
         if (confirm('Are you sure you want to delete this booking?')) {
-            storage.deleteBooking(id)
-            loadData()
+            storage.deleteBooking(id).then(() => loadData())
         }
     }
 
@@ -125,6 +156,32 @@ export default function BookingsPage() {
                                 />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="phone" className="text-right">Phone</Label>
+                                <Input
+                                    id="phone"
+                                    value={formData.customerPhone || ''}
+                                    onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+                                    className="col-span-3 bg-white/5 border-white/10"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="user" className="text-right">Link User</Label>
+                                <Select
+                                    value={formData.customerId || ''}
+                                    onValueChange={(val) => setFormData({ ...formData, customerId: val })}
+                                >
+                                    <SelectTrigger className="col-span-3 bg-white/5 border-white/10">
+                                        <SelectValue placeholder="Link to Customer Account" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None (Guest)</SelectItem>
+                                        {customers.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="event" className="text-right">Event Type</Label>
                                 <Input
                                     id="event"
@@ -144,7 +201,7 @@ export default function BookingsPage() {
                                 />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="amount" className="text-right">Amount</Label>
+                                <Label htmlFor="amount" className="text-right">Total Fee</Label>
                                 <Input
                                     id="amount"
                                     type="number"
@@ -152,6 +209,32 @@ export default function BookingsPage() {
                                     onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                                     className="col-span-3 bg-white/5 border-white/10"
                                 />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="advance" className="text-right">Advance</Label>
+                                <Input
+                                    id="advance"
+                                    type="number"
+                                    value={formData.advanceAmount || ''}
+                                    onChange={(e) => setFormData({ ...formData, advanceAmount: Number(e.target.value) })}
+                                    className="col-span-3 bg-white/5 border-white/10"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="received" className="text-right">Received</Label>
+                                <Input
+                                    id="received"
+                                    type="number"
+                                    value={formData.receivedAmount || ''}
+                                    onChange={(e) => setFormData({ ...formData, receivedAmount: Number(e.target.value) })}
+                                    className="col-span-3 bg-white/5 border-white/10"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">Balance</Label>
+                                <div className="col-span-3 px-3 py-2 bg-primary/10 rounded-lg text-primary font-bold">
+                                    ₹{calculateBalance(Number(formData.amount || 0), Number(formData.advanceAmount || 0), Number(formData.receivedAmount || 0)).toLocaleString()}
+                                </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="status" className="text-right">Status</Label>
@@ -214,11 +297,11 @@ export default function BookingsPage() {
                     <TableHeader className="bg-white/5">
                         <TableRow className="border-white/10 hover:bg-white/5">
                             <TableHead>Customer</TableHead>
-                            <TableHead>Event Type</TableHead>
+                            <TableHead>Event</TableHead>
                             <TableHead>Date</TableHead>
+                            <TableHead>Total</TableHead>
+                            <TableHead>Balance</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Assigned Crew</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -232,27 +315,46 @@ export default function BookingsPage() {
                         ) : (
                             filteredBookings.map((booking) => (
                                 <TableRow key={booking.id} className="border-white/10 hover:bg-white/5">
-                                    <TableCell className="font-medium">{booking.customerName}</TableCell>
-                                    <TableCell>{booking.eventType}</TableCell>
+                                    <TableCell className="font-medium">
+                                        <div className="flex flex-col">
+                                            <span>{booking.customerName}</span>
+                                            <span className="text-[10px] text-muted-foreground">{booking.customerPhone}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            {booking.eventType}
+                                            {booking.customerId && <UserIcon className="w-3 h-3 text-primary" />}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>{new Date(booking.date).toLocaleDateString()}</TableCell>
+                                    <TableCell>₹{booking.amount.toLocaleString()}</TableCell>
+                                    <TableCell className={`font-bold ${(booking.balanceAmount || 0) > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                                        ₹{(booking.balanceAmount || 0).toLocaleString()}
+                                    </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={getStatusColor(booking.status)}>
                                             {booking.status}
                                         </Badge>
-                                    </TableCell>
-                                    <TableCell>₹{booking.amount.toLocaleString()}</TableCell>
-                                    <TableCell>
-                                        {booking.crewAssigned?.map(id => crewMembers.find(c => c.id === id)?.name).join(', ') || 'Unassigned'}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                onClick={() => sendWhatsApp(booking, 'REQUEST')}
+                                                className="text-green-400 hover:text-green-500 hover:bg-green-500/10"
+                                                title="WhatsApp Payment Request"
+                                            >
+                                                <MessageSquare className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
                                                 onClick={() => openEdit(booking)}
                                                 className="hover:text-primary hover:bg-primary/10"
                                             >
-                                                Edit
+                                                <Edit className="w-4 h-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"

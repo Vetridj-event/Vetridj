@@ -22,7 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: 'Bookings', href: '/admin/bookings', icon: CalendarDays },
         { name: 'Website & Packages', href: '/admin/website', icon: MonitorCheck },
         { name: 'Inventory', href: '/admin/inventory', icon: Package },
-        { name: 'Finance & HR', href: '/admin/finance', icon: CreditCard },
+        { name: 'Finance Ledger', href: '/admin/finance/ledger', icon: CreditCard },
         { name: 'Customers', href: '/admin/customers', icon: Users },
         { name: 'Workspace', href: '/admin/workspace', icon: Book },
         { name: 'Profile', href: '/admin/profile', icon: UserCircle },

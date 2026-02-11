@@ -7,8 +7,9 @@ const UserSchema = new Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String },
-    role: { type: String, enum: ['ADMIN', 'CREW'], default: 'CREW' },
+    role: { type: String, enum: ['ADMIN', 'CREW', 'CUSTOMER'], default: 'CUSTOMER' },
     phone: { type: String },
+    whatsapp: { type: String },
     joinedDate: { type: String, default: () => new Date().toISOString() },
     avatar: { type: String },
 }, {
