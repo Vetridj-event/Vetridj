@@ -12,89 +12,129 @@ const KEYS = {
 export const storage = {
     // Users
     getUsers: async (): Promise<User[]> => {
-        const res = await fetch('/api/users')
-        return res.json()
+        try {
+            const res = await fetch('/api/users')
+            if (!res.ok) return []
+            const data = await res.json()
+            return Array.isArray(data) ? data : []
+        } catch (error) {
+            console.error('Error fetching users:', error)
+            return []
+        }
     },
 
     // Bookings
     getBookings: async (): Promise<Booking[]> => {
-        const res = await fetch('/api/bookings')
-        return res.json()
+        try {
+            const res = await fetch('/api/bookings')
+            if (!res.ok) return []
+            const data = await res.json()
+            return Array.isArray(data) ? data : []
+        } catch (error) {
+            console.error('Error fetching bookings:', error)
+            return []
+        }
     },
     addBooking: async (booking: Booking) => {
-        await fetch('/api/bookings', {
+        const res = await fetch('/api/bookings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(booking)
         })
+        return res.ok
     },
     updateBooking: async (updatedBooking: Booking) => {
-        await fetch('/api/bookings', {
+        const res = await fetch('/api/bookings', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedBooking)
         })
+        return res.ok
     },
     deleteBooking: async (id: string) => {
-        await fetch(`/api/bookings?id=${id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/bookings?id=${id}`, { method: 'DELETE' })
+        return res.ok
     },
 
     // Inventory
     getInventory: async (): Promise<InventoryItem[]> => {
-        const res = await fetch('/api/inventory')
-        return res.json()
+        try {
+            const res = await fetch('/api/inventory')
+            if (!res.ok) return []
+            const data = await res.json()
+            return Array.isArray(data) ? data : []
+        } catch (error) {
+            console.error('Error fetching inventory:', error)
+            return []
+        }
     },
     addInventoryItem: async (item: InventoryItem) => {
-        await fetch('/api/inventory', {
+        const res = await fetch('/api/inventory', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(item)
         })
+        return res.ok
     },
     updateInventoryItem: async (updatedItem: InventoryItem) => {
-        await fetch('/api/inventory', {
+        const res = await fetch('/api/inventory', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedItem)
         })
+        return res.ok
     },
     deleteInventoryItem: async (id: string) => {
-        await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' })
+        return res.ok
     },
 
     // Finance
     getFinanceRecords: async (): Promise<FinanceRecord[]> => {
-        const res = await fetch('/api/finance')
-        return res.json()
+        try {
+            const res = await fetch('/api/finance')
+            if (!res.ok) return []
+            const data = await res.json()
+            return Array.isArray(data) ? data : []
+        } catch (error) {
+            console.error('Error fetching finance:', error)
+            return []
+        }
     },
     addFinanceRecord: async (record: FinanceRecord) => {
-        await fetch('/api/finance', {
+        const res = await fetch('/api/finance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(record)
         })
+        return res.ok
     },
     updateFinanceRecord: async (updatedRecord: FinanceRecord) => {
-        await fetch('/api/finance', {
+        const res = await fetch('/api/finance', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedRecord)
         })
+        return res.ok
     },
     deleteFinanceRecord: async (id: string) => {
-        await fetch(`/api/finance?id=${id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/finance?id=${id}`, { method: 'DELETE' })
+        return res.ok
     },
 
     // Packages
     getPackages: async (): Promise<EventPackage[]> => {
-        const res = await fetch('/api/packages')
-        return res.json()
+        try {
+            const res = await fetch('/api/packages')
+            if (!res.ok) return []
+            const data = await res.json()
+            return Array.isArray(data) ? data : []
+        } catch (error) {
+            console.error('Error fetching packages:', error)
+            return []
+        }
     },
     setPackages: async (packages: EventPackage[]) => {
-        // This is a bit tricky as setPackages usually overwrites everything.
-        // For simplicity, we'll just implement it as needed or refactor the caller.
-        // In website/page.tsx, it's used for the whole list.
-        // Let's assume we want to sync the whole list.
         for (const pkg of packages) {
             await fetch('/api/packages', {
                 method: 'POST',
@@ -106,7 +146,13 @@ export const storage = {
 
     // Auth Helper
     login: async (email: string, password: string): Promise<User | null> => {
-        const users = await storage.getUsers()
-        return users.find(u => u.email === email && u.password === password) || null
+        try {
+            const users = await storage.getUsers()
+            if (!Array.isArray(users)) return null
+            return users.find(u => u.email === email && u.password === password) || null
+        } catch (error) {
+            console.error('Login storage error:', error)
+            return null
+        }
     }
 }
