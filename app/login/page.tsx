@@ -131,33 +131,6 @@ export default function LoginPage() {
                             </Button>
                         </form>
                     </CardContent>
-                    <CardFooter className="flex flex-col gap-3 pt-0 pb-8 text-center">
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Quick Access</p>
-                        <div className="flex gap-2 justify-center">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-[10px] h-7 border-white/10 hover:bg-primary/10 hover:text-primary transition-all"
-                                onClick={() => {
-                                    setEmail('admin@vetridj.com')
-                                    setPassword('admin')
-                                }}
-                            >
-                                Admin Demo
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-[10px] h-7 border-white/10 hover:bg-secondary/10 hover:text-secondary transition-all"
-                                onClick={() => {
-                                    setEmail('crew@vetridj.com')
-                                    setPassword('crew')
-                                }}
-                            >
-                                Crew Demo
-                            </Button>
-                        </div>
-                    </CardFooter>
                 </Card>
             </div>
         </div>
