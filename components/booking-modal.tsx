@@ -17,7 +17,7 @@ import { useEffect } from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { format, isSameDay } from "date-fns"
 import { useAuth } from "@/context/auth-context"
 
 interface BookingModalProps {
@@ -28,6 +28,7 @@ interface BookingModalProps {
 export function BookingModal({ open, onOpenChange }: BookingModalProps) {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [ledWallEnabled, setLedWallEnabled] = useState(false)
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [formData, setFormData] = useState({
     clientName: '',
     eventType: '',
@@ -62,7 +63,8 @@ export function BookingModal({ open, onOpenChange }: BookingModalProps) {
           ...prev,
           clientName: user.name,
           whatsappNumber: user.whatsapp || user.phone || '',
-          alternatePhone: user.phone !== user.whatsapp ? user.phone || '' : ''
+          alternatePhone: user.phone && user.phone !== user.whatsapp ? user.phone : '',
+          location: user.city ? `${user.city}, ${user.pincode}` : ''
         }))
       }
     }
@@ -107,21 +109,6 @@ Name: ${formData.clientName}
 Event Type: ${formData.eventType}
 📅 Event Date: ${formData.eventDate}
 📍 Location: ${formData.location}
-
-━━━━━━━━━━━━━━━
-🎶 DJ PACKAGE SELECTED
-Package: ${formData.djPackage}
-💰 Package Price: ₹${packagePrice.toLocaleString()}
-
-━━━━━━━━━━━━━━━
-🧱✨ LED WALL ADD-ON
-Selected: ${ledWallEnabled ? '☑️ Yes' : '⬜ No'}
-Size: ${ledWallEnabled ? formData.ledWallSize : 'N/A'}
-💡 LED Wall Cost: ₹${ledWallEnabled ? ledWallPrice.toLocaleString() : '0'}
-
-━━━━━━━━━━━━━━━
-💵 TOTAL BOOKING AMOUNT
-🔥 ₹${totalAmount.toLocaleString()}
 
 ━━━━━━━━━━━━━━━
 📝 ADDITIONAL NOTES
@@ -280,7 +267,7 @@ ${formData.additionalNotes || 'None'}`
 
               <div className="space-y-2 flex flex-col">
                 <Label htmlFor="eventDate">Event Date *</Label>
-                <Popover>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
@@ -288,6 +275,7 @@ ${formData.additionalNotes || 'None'}`
                         "w-full pl-3 text-left font-normal",
                         !formData.eventDate && "text-muted-foreground"
                       )}
+                      onClick={() => setIsDatePickerOpen(true)}
                     >
                       {formData.eventDate ? (
                         format(new Date(formData.eventDate), "PPP")
@@ -301,18 +289,23 @@ ${formData.additionalNotes || 'None'}`
                     <Calendar
                       mode="single"
                       selected={formData.eventDate ? new Date(formData.eventDate) : undefined}
-                      onSelect={(date) => date && setFormData({ ...formData, eventDate: date.toISOString().split('T')[0] })}
+                      onSelect={(date) => {
+                        if (date) {
+                          // Use YYYY-MM-DD format to avoid UTC timezone issues
+                          const formattedDate = format(date, 'yyyy-MM-dd')
+                          setFormData({ ...formData, eventDate: formattedDate })
+                          setIsDatePickerOpen(false)
+                        }
+                      }}
                       disabled={(date) => {
                         // Disable past dates
-                        if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        if (date < today) return true
 
-                        // Disable booked dates
+                        // Disable booked dates using isSameDay for robustness
                         return existingBookings.some(b => {
-                          const bookedDate = new Date(b.date)
-                          return date.getDate() === bookedDate.getDate() &&
-                            date.getMonth() === bookedDate.getMonth() &&
-                            date.getFullYear() === bookedDate.getFullYear() &&
-                            b.status !== 'CANCELLED'
+                          return isSameDay(date, new Date(b.date)) && b.status !== 'CANCELLED'
                         })
                       }}
                       initialFocus
@@ -350,7 +343,7 @@ ${formData.additionalNotes || 'None'}`
                 <SelectContent>
                   {djPackages.map((pkg) => (
                     <SelectItem key={pkg.id} value={pkg.name}>
-                      {pkg.name} - ₹{pkg.price.toLocaleString()}
+                      {pkg.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -379,7 +372,7 @@ ${formData.additionalNotes || 'None'}`
                   Add LED Wall Display
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {'Hexagonal LED walls • ₹100 per sq.ft'}
+                  {'Hexagonal LED walls available'}
                 </p>
               </div>
             </div>
@@ -392,10 +385,10 @@ ${formData.additionalNotes || 'None'}`
                     <SelectValue placeholder="Select LED wall size" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="6 × 8 ft">6 × 8 ft - ₹4,800</SelectItem>
-                    <SelectItem value="8 × 12 ft">8 × 12 ft - ₹9,600</SelectItem>
-                    <SelectItem value="10 × 15 ft">10 × 15 ft - ₹15,000</SelectItem>
-                    <SelectItem value="10 × 20 ft">10 × 20 ft - ₹20,000</SelectItem>
+                    <SelectItem value="6 × 8 ft">6 × 8 ft</SelectItem>
+                    <SelectItem value="8 × 12 ft">8 × 12 ft</SelectItem>
+                    <SelectItem value="10 × 15 ft">10 × 15 ft</SelectItem>
+                    <SelectItem value="10 × 20 ft">10 × 20 ft</SelectItem>
                     <SelectItem value="Custom">Custom Size (We'll contact you)</SelectItem>
                   </SelectContent>
                 </Select>

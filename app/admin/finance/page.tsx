@@ -1,8 +1,6 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 import { storage } from '@/lib/storage'
-import { FinanceRecord, User } from '@/types'
+import { FinanceRecord, User, Booking } from '@/types'
 import { exportToCSV } from '@/lib/export-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +16,7 @@ import {
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -26,12 +25,21 @@ import {
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, DollarSign, TrendingUp, TrendingDown, Wallet, Edit, Trash } from 'lucide-react'
+import { Plus, DollarSign, TrendingUp, TrendingDown, Wallet, Edit, Trash, Calculator, Calendar } from 'lucide-react'
 
 export default function FinancePage() {
     const [records, setRecords] = useState<FinanceRecord[]>([])
+    const [bookings, setBookings] = useState<Booking[]>([])
     const [crew, setCrew] = useState<User[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [isCalcOpen, setIsCalcOpen] = useState(false)
+    const [selectedBooking, setSelectedBooking] = useState<string>('')
+    const [calcData, setCalcData] = useState({
+        description: '',
+        amount: 0,
+        category: 'Event Expense'
+    })
+
     const [formData, setFormData] = useState<Partial<FinanceRecord>>({
         type: 'INCOME',
         date: new Date().toISOString().split('T')[0]
@@ -43,12 +51,14 @@ export default function FinancePage() {
     }, [])
 
     const loadData = async () => {
-        const [recs, users] = await Promise.all([
+        const [recs, users, bks] = await Promise.all([
             storage.getFinanceRecords(),
-            storage.getUsers()
+            storage.getUsers(),
+            storage.getBookings()
         ])
         setRecords(recs)
         setCrew(users.filter(u => u.role === 'CREW'))
+        setBookings(bks)
     }
 
     const handleSave = async () => {
@@ -68,6 +78,26 @@ export default function FinancePage() {
         setFormData({ type: 'INCOME', date: new Date().toISOString().split('T')[0] })
     }
 
+    const handleAddCalculatorExpense = async () => {
+        if (!selectedBooking || !calcData.amount) return
+
+        const booking = bookings.find(b => b.id === selectedBooking)
+        const newRecord: FinanceRecord = {
+            id: `fin-${Date.now()}`,
+            type: 'EXPENSE',
+            amount: Number(calcData.amount),
+            category: calcData.category,
+            description: `[Event: ${booking?.customerName} - ${booking?.eventType}] ${calcData.description}`,
+            date: new Date().toISOString().split('T')[0],
+            relatedBookingId: selectedBooking
+        }
+
+        await storage.addFinanceRecord(newRecord)
+        await loadData()
+        setCalcData({ description: '', amount: 0, category: 'Event Expense' })
+        setIsCalcOpen(false)
+    }
+
     const openEdit = (record: FinanceRecord) => {
         setEditingRecord(record)
         setFormData(record)
@@ -85,6 +115,24 @@ export default function FinancePage() {
     const expense = records.filter(r => r.type === 'EXPENSE').reduce((acc, curr) => acc + curr.amount, 0)
     const balance = income - expense
 
+    // Event Wise Profit/Loss
+    const eventStats = bookings.map(b => {
+        const eventIncome = records
+            .filter(r => r.relatedBookingId === b.id && r.type === 'INCOME')
+            .reduce((acc, curr) => acc + curr.amount, 0) || b.amount // Fallback to booking amount if no specific record
+
+        const eventExpense = records
+            .filter(r => r.relatedBookingId === b.id && r.type === 'EXPENSE')
+            .reduce((acc, curr) => acc + curr.amount, 0)
+
+        return {
+            ...b,
+            totalIncome: eventIncome,
+            totalExpense: eventExpense,
+            profit: eventIncome - eventExpense
+        }
+    })
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -92,81 +140,143 @@ export default function FinancePage() {
                     <h2 className="text-3xl font-bold tracking-tight">Finance & HR</h2>
                     <p className="text-muted-foreground">Track income, expenses, and crew payments.</p>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary/90 text-background">
-                            <Plus className="mr-2 h-4 w-4" /> Add Record
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="glass-dark border-white/10 sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>{editingRecord ? 'Edit Record' : 'New Financial Record'}</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="type" className="text-right">Type</Label>
-                                <Select
-                                    value={formData.type}
-                                    onValueChange={(val: any) => setFormData({ ...formData, type: val })}
-                                >
-                                    <SelectTrigger className="col-span-3 bg-white/5 border-white/10">
-                                        <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="INCOME">Income</SelectItem>
-                                        <SelectItem value="EXPENSE">Expense</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                <div className="flex gap-2">
+                    <Dialog open={isCalcOpen} onOpenChange={setIsCalcOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
+                                <Calculator className="mr-2 h-4 w-4" /> Expense Calculator
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="glass-dark border-white/10 sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Add Event Expense</DialogTitle>
+                                <DialogDescription>Calculate and log expenses for specific events.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Event</Label>
+                                    <Select value={selectedBooking} onValueChange={setSelectedBooking}>
+                                        <SelectTrigger className="col-span-3 bg-white/5 border-white/10">
+                                            <SelectValue placeholder="Select event" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {bookings.map(b => (
+                                                <SelectItem key={b.id} value={b.id}>
+                                                    {b.customerName} - {b.eventType} ({new Date(b.date).toLocaleDateString()})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Category</Label>
+                                    <Input
+                                        value={calcData.category}
+                                        onChange={(e) => setCalcData({ ...calcData, category: e.target.value })}
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Description</Label>
+                                    <Input
+                                        value={calcData.description}
+                                        onChange={(e) => setCalcData({ ...calcData, description: e.target.value })}
+                                        placeholder="e.g. Travel, Extra Equipment"
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Amount</Label>
+                                    <Input
+                                        type="number"
+                                        value={calcData.amount || ''}
+                                        onChange={(e) => setCalcData({ ...calcData, amount: Number(e.target.value) })}
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="desc" className="text-right">Description</Label>
-                                <Input
-                                    id="desc"
-                                    value={formData.description || ''}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="col-span-3 bg-white/5 border-white/10"
-                                />
+                            <DialogFooter>
+                                <Button onClick={handleAddCalculatorExpense} className="bg-primary text-background">Add to Finance</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-primary hover:bg-primary/90 text-background">
+                                <Plus className="mr-2 h-4 w-4" /> Add Record
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="glass-dark border-white/10 sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>{editingRecord ? 'Edit Record' : 'New Financial Record'}</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="type" className="text-right">Type</Label>
+                                    <Select
+                                        value={formData.type}
+                                        onValueChange={(val: any) => setFormData({ ...formData, type: val })}
+                                    >
+                                        <SelectTrigger className="col-span-3 bg-white/5 border-white/10">
+                                            <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="INCOME">Income</SelectItem>
+                                            <SelectItem value="EXPENSE">Expense</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="desc" className="text-right">Description</Label>
+                                    <Input
+                                        id="desc"
+                                        value={formData.description || ''}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="category" className="text-right">Category</Label>
+                                    <Input
+                                        id="category"
+                                        value={formData.category || ''}
+                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        placeholder="e.g. Salary, Repair, Advance"
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="amount" className="text-right">Amount</Label>
+                                    <Input
+                                        id="amount"
+                                        type="number"
+                                        value={formData.amount || ''}
+                                        onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="date" className="text-right">Date</Label>
+                                    <Input
+                                        id="date"
+                                        type="date"
+                                        value={formData.date || ''}
+                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        className="col-span-3 bg-white/5 border-white/10"
+                                    />
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="category" className="text-right">Category</Label>
-                                <Input
-                                    id="category"
-                                    value={formData.category || ''}
-                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    placeholder="e.g. Salary, Repair, Advance"
-                                    className="col-span-3 bg-white/5 border-white/10"
-                                />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="amount" className="text-right">Amount</Label>
-                                <Input
-                                    id="amount"
-                                    type="number"
-                                    value={formData.amount || ''}
-                                    onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-                                    className="col-span-3 bg-white/5 border-white/10"
-                                />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="date" className="text-right">Date</Label>
-                                <Input
-                                    id="date"
-                                    type="date"
-                                    value={formData.date || ''}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="col-span-3 bg-white/5 border-white/10"
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button onClick={handleSave} className="bg-primary text-background">Save Record</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                            <DialogFooter>
+                                <Button onClick={handleSave} className="bg-primary text-background">Save Record</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-                <Card className="glass-dark border-white/5">
+                <Card className="glass-dark border-white/5 text-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Income</CardTitle>
                         <TrendingUp className="h-4 w-4 text-green-500" />
@@ -194,6 +304,44 @@ export default function FinancePage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Card className="glass-dark border-white/5">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Calculator className="h-5 w-5 text-primary" /> Event-wise Profit Analysis
+                    </CardTitle>
+                    <CardDescription>Detailed breakdown of income and expenses per booking.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="border-white/10 hover:bg-transparent">
+                                <TableHead>Event / Client</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Package Price</TableHead>
+                                <TableHead className="text-right">Total Expenses</TableHead>
+                                <TableHead className="text-right">Net Profit</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {eventStats.map((event) => (
+                                <TableRow key={event.id} className="border-white/5 hover:bg-white/5">
+                                    <TableCell>
+                                        <div className="font-medium text-sm">{event.eventType}</div>
+                                        <div className="text-xs text-muted-foreground">{event.customerName}</div>
+                                    </TableCell>
+                                    <TableCell className="text-xs">{new Date(event.date).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right text-green-400 font-mono">₹{event.totalIncome.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right text-red-400 font-mono">₹{event.totalExpense.toLocaleString()}</TableCell>
+                                    <TableCell className={`text-right font-bold font-mono ${event.profit >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                                        ₹{event.profit.toLocaleString()}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="glass-dark border-white/5">

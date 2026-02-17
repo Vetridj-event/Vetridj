@@ -10,6 +10,20 @@ export async function seedDatabase() {
     if (userCount === 0) {
         console.log('Seeding users...');
         await User.insertMany(INITIAL_USERS);
+    } else {
+        // Ensure admin exists if not present
+        for (const initialUser of INITIAL_USERS) {
+            const exists = await User.findOne({
+                $or: [
+                    { email: initialUser.email },
+                    { phone: initialUser.phone }
+                ]
+            });
+            if (!exists) {
+                console.log(`Seeding missing user: ${initialUser.name}`);
+                await User.create(initialUser);
+            }
+        }
     }
 
     const bookingCount = await Booking.countDocuments();

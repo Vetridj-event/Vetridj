@@ -9,6 +9,7 @@ const FinanceSchema = new Schema({
     description: { type: String, required: true },
     category: { type: String },
     date: { type: String, required: true },
+    relatedBookingId: { type: String },
 }, {
     timestamps: true,
     toJSON: {

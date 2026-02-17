@@ -3,12 +3,25 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { storage } from '@/lib/storage'
-import { DollarSign, Users, Calendar as CalendarIcon, TrendingUp, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Activity, BrainCircuit } from 'lucide-react'
+import { DollarSign, Users, Calendar as CalendarIcon, TrendingUp, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Activity, BrainCircuit, Bell } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Booking, FinanceRecord } from '@/types'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts'
 import { Calendar } from '@/components/ui/calendar'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { CreditCard } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884d8'];
 
@@ -31,14 +44,18 @@ export default function DashboardPage() {
     const [eventDistribution, setEventDistribution] = useState<any[]>([])
     const [recentBookings, setRecentBookings] = useState<Booking[]>([])
     const [allBookings, setAllBookings] = useState<Booking[]>([])
+    const [upiId, setUpiId] = useState('')
 
     useEffect(() => {
         const loadDashboard = async () => {
-            const [bookings, users, finance] = await Promise.all([
+            const [bookings, users, finance, settings] = await Promise.all([
                 storage.getBookings(),
                 storage.getUsers(),
-                storage.getFinanceRecords()
+                storage.getFinanceRecords(),
+                storage.getSettings()
             ])
+
+            if (settings.upi_id) setUpiId(settings.upi_id)
 
             // Calculate stats
             const income = finance
@@ -110,6 +127,15 @@ export default function DashboardPage() {
         loadDashboard()
     }, [])
 
+    const handleUpdateUpi = async () => {
+        const ok = await storage.updateSetting('upi_id', upiId)
+        if (ok) {
+            toast.success('UPI ID updated successfully')
+        } else {
+            toast.error('Failed to update UPI ID')
+        }
+    }
+
     return (
         <div className="space-y-8 pb-10">
             <div className="flex justify-between items-end">
@@ -118,12 +144,116 @@ export default function DashboardPage() {
                     <p className="text-muted-foreground">Detailed overview of your business performance.</p>
                 </div>
                 <div className="flex gap-2">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="border-red-500/20 text-red-400 hover:bg-red-500/10">
+                                <Activity className="mr-2 h-4 w-4" /> System Cleanup
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="glass-dark border-white/10 sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle className="text-red-400 flex items-center gap-2">
+                                    <Activity className="h-5 w-5" /> Danger Zone: System Cleanup
+                                </DialogTitle>
+                                <DialogDescription className="pt-2 text-white/70">
+                                    This will permanently delete all **Bookings, Finance Records, and Crew/Customer Accounts**. Only the Admin account will be preserved.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-6 space-y-4">
+                                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 space-y-2">
+                                    <p className="text-sm font-bold text-red-400 flex items-center gap-2">
+                                        <ArrowDownRight className="h-4 w-4 rotate-45" /> BACKUP REMINDER
+                                    </p>
+                                    <p className="text-xs text-white/60 leading-relaxed">
+                                        Please ensure you have exported all necessary CSV reports from the Finance and Bookings sections before proceeding. This action cannot be undone.
+                                    </p>
+                                </div>
+                                <p className="text-xs text-muted-foreground text-center">
+                                    Recommended to perform this maintenance every 2 weeks.
+                                </p>
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    className="bg-red-500 hover:bg-red-600 text-white w-full font-bold"
+                                    onClick={async () => {
+                                        if (confirm('Are you absolutely sure? This will wipe the database.')) {
+                                            const res = await fetch('/api/admin/cleanup', { method: 'POST' });
+                                            if (res.ok) {
+                                                window.location.reload();
+                                            } else {
+                                                alert('Cleanup failed.');
+                                            }
+                                        }
+                                    }}
+                                >
+                                    Wipe All Data & Reset System
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
+                                <Activity className="mr-2 h-4 w-4" /> UPI Settings
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="glass-dark border-white/10 sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle className="text-primary flex items-center gap-2">
+                                    <CreditCard className="h-5 w-5" /> Payment Gateway Settings
+                                </DialogTitle>
+                                <DialogDescription className="pt-2 text-white/70">
+                                    Configure the UPI ID that customers will use to make payments from their dashboard.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-6 space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="upi-id" className="text-sm font-bold text-white uppercase tracking-widest">Business UPI ID</Label>
+                                    <Input
+                                        id="upi-id"
+                                        placeholder="e.g. vetridj@okaxis"
+                                        className="bg-white/5 border-white/10 text-white"
+                                        value={upiId}
+                                        onChange={(e) => setUpiId(e.target.value)}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground italic">Important: Ensure this ID is correct to avoid payment failures.</p>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    className="bg-primary text-background w-full font-black"
+                                    onClick={handleUpdateUpi}
+                                >
+                                    Save UPI Configuration
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
                     <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg flex items-center gap-2">
                         <Activity className="h-4 w-4 text-green-500" />
                         <span className="text-sm font-medium">System Online</span>
                     </div>
                 </div>
             </div>
+
+            {allBookings.filter(b => b.status === 'PENDING').length > 0 && (
+                <div className="bg-primary/10 border border-primary/20 p-4 rounded-2xl flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                            <Bell className="w-6 h-6 animate-bounce" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white">Action Required: New Booking Requests</h3>
+                            <p className="text-sm text-muted-foreground">You have {allBookings.filter(b => b.status === 'PENDING').length} unconfirmed booking requests waiting for approval.</p>
+                        </div>
+                    </div>
+                    <Link href="/admin/bookings">
+                        <Button className="bg-primary text-background font-bold h-11 px-6">Review Bookings</Button>
+                    </Link>
+                </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="glass-dark border-white/5 relative overflow-hidden group">

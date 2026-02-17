@@ -24,6 +24,7 @@ interface SidebarItem {
     name: string
     href: string
     icon: any
+    badge?: string | number
 }
 
 interface SidebarProps {
@@ -94,6 +95,11 @@ export function Sidebar({ items, title, subtitle }: SidebarProps) {
                                 >
                                     <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                                     {item.name}
+                                    {item.badge && (
+                                        <span className="ml-auto bg-primary text-background text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
+                                            {item.badge}
+                                        </span>
+                                    )}
                                 </Link>
                             )
                         })}

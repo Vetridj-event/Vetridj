@@ -5,11 +5,14 @@ export interface IUser extends Omit<UserType, 'id'>, Document { }
 
 const UserSchema = new Schema({
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, sparse: true },
     password: { type: String },
     role: { type: String, enum: ['ADMIN', 'CREW', 'CUSTOMER'], default: 'CUSTOMER' },
     phone: { type: String },
     whatsapp: { type: String },
+    pincode: { type: String },
+    city: { type: String },
+    state: { type: String },
     joinedDate: { type: String, default: () => new Date().toISOString() },
     avatar: { type: String },
     salary: { type: Number, default: 0 },

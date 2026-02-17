@@ -3,11 +3,14 @@ export type Role = 'ADMIN' | 'CREW' | 'CUSTOMER'
 export interface User {
     id: string
     name: string
-    email: string
+    email?: string
     password?: string // In a real app, this would be hashed. For mock, we might simulate it.
     role: Role
     phone?: string
     whatsapp?: string
+    pincode?: string
+    city?: string
+    state?: string
     joinedDate: string
     avatar?: string
     salary?: number
@@ -33,6 +36,7 @@ export interface Booking {
     checkInTime?: { [crewId: string]: string }
     djPackage?: string
     additionalNotes?: string
+    paymentRequested?: boolean
 }
 
 export interface InventoryItem {
@@ -61,4 +65,15 @@ export interface EventPackage {
     price: number
     features: string[]
     isPopular?: boolean
+}
+
+export interface ProductRequest {
+    id: string
+    crewId: string
+    crewName: string
+    productName: string
+    requirements: string
+    quantity: number
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    date: string
 }

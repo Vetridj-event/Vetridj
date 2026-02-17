@@ -3,8 +3,8 @@
 import { useAuth } from '@/context/auth-context'
 import { useState, useEffect } from 'react'
 import { storage } from '@/lib/storage'
-import { Booking } from '@/types'
-import { Card, CardContent } from '@/components/ui/card'
+import { Booking, User } from '@/types'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
     Calendar,
@@ -20,18 +20,43 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog'
+import { toast } from 'sonner'
+import { generateInvoicePDF } from '@/lib/invoice-utils'
 
 export default function MyBookingsPage() {
     const { user } = useAuth()
     const [bookings, setBookings] = useState<Booking[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const [upiId, setUpiId] = useState('')
+    const [selectedBookingForPay, setSelectedBookingForPay] = useState<Booking | null>(null)
 
     useEffect(() => {
         if (user) {
-            storage.getBookings().then(all => {
+            Promise.all([
+                storage.getBookings(),
+                storage.getSettings()
+            ]).then(([all, settings]) => {
                 const myBookings = all.filter(b => b.customerId === user.id || b.customerEmail === user.email)
                 setBookings(myBookings)
+                if (settings.upi_id) setUpiId(settings.upi_id)
+
+                // Auto-open payment popup if requested and confirmed
+                const requested = myBookings.find(b => b.status === 'CONFIRMED' && b.paymentRequested && (b.balanceAmount || 0) > 0)
+                if (requested) {
+                    setSelectedBookingForPay(requested)
+                    toast.info('Payment Requested', {
+                        description: `Admin has requested a balance payment for your ${requested.eventType} event.`
+                    })
+                }
+
                 setLoading(false)
             })
         }
@@ -118,62 +143,65 @@ export default function MyBookingsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Financial Summary Section */}
-                                    <div className="p-8 bg-white/[0.02] flex flex-col justify-between">
-                                        <div className="space-y-6">
-                                            <div className="flex items-center gap-2 text-muted-foreground">
-                                                <CreditCard className="w-5 h-5" />
-                                                <h4 className="text-xs font-black uppercase tracking-widest">Financial Summary</h4>
+                                    {/* Status & Actions Section */}
+                                    <div className="p-8 border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col justify-center items-center">
+                                        <div className="space-y-4 text-center">
+                                            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">Stage</p>
+                                            <div className="flex flex-col items-center gap-4">
+                                                <div className={`p-6 rounded-3xl ${booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400'
+                                                    }`}>
+                                                    {booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' ? <CheckCircle className="w-12 h-12" /> : <Clock className="w-12 h-12" />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-2xl">{booking.status}</p>
+                                                    {booking.status === 'CONFIRMED' ? (
+                                                        <>
+                                                            {booking.paymentRequested && (booking.balanceAmount || 0) > 0 ? (
+                                                                <p className="text-sm text-primary font-bold animate-pulse">Payment Requested</p>
+                                                            ) : (
+                                                                <p className="text-sm text-muted-foreground italic">Booking Confirmed</p>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground italic">Waiting for admin confirmation</p>
+                                                    )}
+                                                </div>
                                             </div>
-
-                                            <div className="space-y-4">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-muted-foreground">Total Package</span>
-                                                    <span className="text-lg font-bold">₹{booking.amount.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                                                    <span className="text-sm text-muted-foreground">Advance Paid</span>
-                                                    <span className="text-sm font-bold text-green-400">₹{(booking.advanceAmount || 0).toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center pt-2">
-                                                    <span className="text-sm font-bold text-primary">Balance Due</span>
-                                                    <span className="text-2xl font-black text-primary">₹{(booking.balanceAmount || 0).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-8">
-                                            <Button className="w-full bg-primary text-background font-black h-12 shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
-                                                Make Payment <ArrowUpRight className="w-4 h-4 ml-2" />
-                                            </Button>
                                         </div>
                                     </div>
 
-                                    {/* Status & Actions Section */}
-                                    <div className="p-8 border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col justify-between">
-                                        <div className="hidden lg:block space-y-4">
-                                            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">Stage</p>
-                                            <div className="flex items-center gap-4">
-                                                <div className={`p-4 rounded-2xl ${booking.status === 'CONFIRMED' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400'
-                                                    }`}>
-                                                    {booking.status === 'CONFIRMED' ? <CheckCircle className="w-8 h-8" /> : <Clock className="w-8 h-8" />}
+                                    <div className="space-y-3 mt-8 lg:mt-0">
+                                        <p className="text-xs font-black text-muted-foreground lg:hidden uppercase tracking-widest mb-2">Support</p>
+                                        <Button variant="outline" className="w-full h-11 border-white/10 font-bold hover:bg-white/5">
+                                            <MessageSquare className="w-4 h-4 mr-2" /> Message Admin
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full h-11 text-muted-foreground hover:text-foreground hover:bg-white/5 text-xs"
+                                            onClick={() => user && generateInvoicePDF(booking, user)}
+                                        >
+                                            Download Invoice (PDF)
+                                        </Button>
+                                        {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') && (
+                                            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-[10px] text-muted-foreground font-bold uppercase">Total Amount</span>
+                                                    <span className="font-bold">₹{booking.amount?.toLocaleString()}</span>
                                                 </div>
-                                                <div>
-                                                    <p className="font-black text-xl">{booking.status}</p>
-                                                    <p className="text-xs text-muted-foreground">Updated 1 day ago</p>
+                                                <div className="flex justify-between items-center text-primary">
+                                                    <span className="text-[10px] font-bold uppercase">Balance Due</span>
+                                                    <span className="font-black">₹{booking.balanceAmount?.toLocaleString()}</span>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <div className="space-y-3 mt-8 lg:mt-0">
-                                            <p className="text-xs font-black text-muted-foreground lg:hidden uppercase tracking-widest mb-2">Support</p>
-                                            <Button variant="outline" className="w-full h-11 border-white/10 font-bold hover:bg-white/5">
-                                                <MessageSquare className="w-4 h-4 mr-2" /> Message Admin
+                                        )}
+                                        {booking.status === 'CONFIRMED' && booking.paymentRequested && (booking.balanceAmount || 0) > 0 && (
+                                            <Button
+                                                className="w-full bg-primary text-background font-bold h-11"
+                                                onClick={() => setSelectedBookingForPay(booking)}
+                                            >
+                                                <CreditCard className="w-4 h-4 mr-2" /> Pay Balance
                                             </Button>
-                                            <Button variant="ghost" className="w-full h-11 text-muted-foreground hover:text-foreground hover:bg-white/5 text-xs">
-                                                Download Invoice (PDF)
-                                            </Button>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
@@ -181,6 +209,37 @@ export default function MyBookingsPage() {
                     ))
                 )}
             </div>
+
+            {/* UPI Payment Drawer/Dialog */}
+            <Dialog open={!!selectedBookingForPay} onOpenChange={(open) => !open && setSelectedBookingForPay(null)}>
+                <DialogContent className="glass-dark border-white/10 sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Complete Payment</DialogTitle>
+                        <DialogDescription>
+                            Select your preferred UPI app to pay the balance of ₹{selectedBookingForPay?.balanceAmount?.toLocaleString()}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 gap-4 py-6">
+                        {['GPay', 'PhonePe', 'Paytm'].map((app) => (
+                            <Button
+                                key={app}
+                                variant="outline"
+                                className="h-16 justify-between border-white/10 hover:bg-primary/10 hover:border-primary/50 group"
+                                onClick={() => {
+                                    if (!upiId) return toast.error('UPI configuration missing')
+                                    const name = encodeURIComponent('VETRI DJ EVENTS')
+                                    const amount = selectedBookingForPay?.balanceAmount
+                                    const upiUrl = `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR`
+                                    window.open(upiUrl, '_blank')
+                                }}
+                            >
+                                <span className="font-bold">{app}</span>
+                                <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
+                            </Button>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

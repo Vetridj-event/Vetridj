@@ -3,18 +3,69 @@
 import { useState, useEffect } from 'react'
 import { storage } from '@/lib/storage'
 import { InventoryItem } from '@/types'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Package, Search } from 'lucide-react'
+import { Package, Search, Plus, Loader2 } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { useAuth } from '@/context/auth-context'
 
 export default function CrewInventoryPage() {
+    const { user } = useAuth()
     const [items, setItems] = useState<InventoryItem[]>([])
     const [searchTerm, setSearchTerm] = useState('')
+    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
+    const [requestData, setRequestData] = useState({
+        productName: '',
+        requirements: '',
+        quantity: 1
+    })
 
     useEffect(() => {
         storage.getInventory().then(setItems)
     }, [])
+
+    const handleRequest = async () => {
+        if (!requestData.productName || requestData.quantity <= 0) {
+            toast.error('Please fill in product name and quantity')
+            return
+        }
+
+        setSubmitting(true)
+        try {
+            const ok = await storage.addProductRequest({
+                id: `req-${Date.now()}`,
+                crewId: user?.id || 'unknown',
+                crewName: user?.name || 'Unknown Crew',
+                productName: requestData.productName,
+                requirements: requestData.requirements,
+                quantity: requestData.quantity,
+                status: 'PENDING',
+                date: new Date().toISOString()
+            })
+
+            if (ok) {
+                toast.success('Product request sent to admin')
+                setIsRequestModalOpen(false)
+                setRequestData({ productName: '', requirements: '', quantity: 1 })
+            }
+        } catch (error) {
+            toast.error('Failed to send request')
+        } finally {
+            setSubmitting(false)
+        }
+    }
 
     const filteredItems = items.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -23,9 +74,66 @@ export default function CrewInventoryPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Inventory Check</h2>
-                <p className="text-muted-foreground">View available equipment for events.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Inventory Check</h2>
+                    <p className="text-muted-foreground">View available equipment for events.</p>
+                </div>
+
+                <Dialog open={isRequestModalOpen} onOpenChange={setIsRequestModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-primary text-background font-bold">
+                            <Plus className="w-4 h-4 mr-2" /> Request Product
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="glass-dark border-white/10 sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Request New Product</DialogTitle>
+                            <p className="text-sm text-muted-foreground">Submit a requirement for equipment not in inventory or more stock.</p>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Product/Equipment Name</Label>
+                                <Input
+                                    value={requestData.productName}
+                                    onChange={(e) => setRequestData({ ...requestData, productName: e.target.value })}
+                                    placeholder="e.g. JBL SRX 828, Fog Liquid"
+                                    className="bg-white/5 border-white/10"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 gap-4 items-end">
+                                <div className="col-span-3 space-y-2">
+                                    <Label>Requirements / Purpose</Label>
+                                    <Input
+                                        value={requestData.requirements}
+                                        onChange={(e) => setRequestData({ ...requestData, requirements: e.target.value })}
+                                        placeholder="Specific reason or event name"
+                                        className="bg-white/5 border-white/10"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Qty</Label>
+                                    <Input
+                                        type="number"
+                                        value={requestData.quantity}
+                                        onChange={(e) => setRequestData({ ...requestData, quantity: parseInt(e.target.value) || 0 })}
+                                        className="bg-white/5 border-white/10 text-center"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                onClick={handleRequest}
+                                className="w-full bg-primary text-background font-bold"
+                                disabled={submitting}
+                            >
+                                {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                Submit Requirement
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="relative">

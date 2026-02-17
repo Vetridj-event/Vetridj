@@ -1,4 +1,4 @@
-import { User, Booking, InventoryItem, FinanceRecord, EventPackage } from '@/types'
+import { User, Booking, InventoryItem, FinanceRecord, EventPackage, ProductRequest } from '@/types'
 import { INITIAL_USERS, INITIAL_BOOKINGS, INITIAL_INVENTORY, INITIAL_FINANCE, INITIAL_PACKAGES } from './data'
 
 const KEYS = {
@@ -21,6 +21,26 @@ export const storage = {
             console.error('Error fetching users:', error)
             return []
         }
+    },
+    addUser: async (user: User) => {
+        const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(user)
+        })
+        return res.ok
+    },
+    updateUser: async (user: User) => {
+        const res = await fetch('/api/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(user)
+        })
+        return res.ok
+    },
+    deleteUser: async (id: string) => {
+        const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' })
+        return res.ok
     },
 
     // Bookings
@@ -166,13 +186,70 @@ export const storage = {
         try {
             const users = await storage.getUsers()
             if (!Array.isArray(users)) return null
-            return users.find(u =>
-                (u.email === identifier || u.phone === identifier || u.whatsapp === identifier) &&
-                u.password === password
-            ) || null
+
+            const isPhone = /^\+?[\d\s-]{10,}$/.test(identifier) && !identifier.includes('@')
+            const normalize = (p: string) => {
+                const d = p.replace(/\D/g, '')
+                return d.length > 10 ? d.slice(-10) : d
+            }
+            const normalizedInput = isPhone ? normalize(identifier) : identifier
+
+            return users.find(u => {
+                if (u.id === identifier || u.email === identifier) return u.password === password
+                const userPhone = normalize(u.phone || '')
+                const userWhatsapp = normalize(u.whatsapp || '')
+                if (isPhone && (userPhone === normalizedInput || userWhatsapp === normalizedInput)) {
+                    return u.password === password
+                }
+                return false
+            }) || null
         } catch (error) {
             console.error('Login storage error:', error)
             return null
         }
+    },
+
+    // Settings
+    getSettings: async (): Promise<Record<string, any>> => {
+        try {
+            const res = await fetch('/api/settings')
+            if (!res.ok) return {}
+            return await res.json()
+        } catch (error) {
+            console.error('Error fetching settings:', error)
+            return {}
+        }
+    },
+    updateSetting: async (key: string, value: any) => {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value })
+        })
+        return res.ok
+    },
+
+    // Product Requests
+    async getProductRequests(): Promise<ProductRequest[]> {
+        const res = await fetch('/api/product-requests')
+        return res.json()
+    },
+
+    async addProductRequest(request: ProductRequest): Promise<boolean> {
+        const res = await fetch('/api/product-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request)
+        })
+        return res.ok
+    },
+
+    async updateProductRequest(request: ProductRequest): Promise<boolean> {
+        const res = await fetch(`/api/product-requests?id=${request.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request)
+        })
+        return res.ok
     }
 }

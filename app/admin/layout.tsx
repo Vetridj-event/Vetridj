@@ -16,13 +16,29 @@ import { Notifications } from '@/components/notifications'
 import { HelpCenter } from '@/components/help-center'
 import { FeedbackMechanism } from '@/components/feedback-mechanism'
 
+import { storage } from '@/lib/storage'
+import { useState, useEffect } from 'react'
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const [pendingCount, setPendingCount] = useState(0)
+
+    useEffect(() => {
+        const checkPending = async () => {
+            const bookings = await storage.getBookings()
+            setPendingCount(bookings.filter(b => b.status === 'PENDING').length)
+        }
+        checkPending()
+        const interval = setInterval(checkPending, 30000)
+        return () => clearInterval(interval)
+    }, [])
+
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-        { name: 'Bookings', href: '/admin/bookings', icon: CalendarDays },
+        { name: 'Bookings', href: '/admin/bookings', icon: CalendarDays, badge: pendingCount > 0 ? pendingCount : undefined },
         { name: 'Website & Packages', href: '/admin/website', icon: MonitorCheck },
         { name: 'Inventory', href: '/admin/inventory', icon: Package },
         { name: 'Finance Ledger', href: '/admin/finance/ledger', icon: CreditCard },
+        { name: 'Crew Management', href: '/admin/crew', icon: Users },
         { name: 'Customers', href: '/admin/customers', icon: Users },
         { name: 'Workspace', href: '/admin/workspace', icon: Book },
         { name: 'Profile', href: '/admin/profile', icon: UserCircle },

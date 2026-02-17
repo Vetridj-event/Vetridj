@@ -52,7 +52,7 @@ export default function SupportPage() {
                             </div>
                             <div>
                                 <p className="font-bold">Phone Support</p>
-                                <p className="text-sm text-muted-foreground">+91 98765 43210</p>
+                                <p className="text-sm text-muted-foreground">+91 6381 544 170</p>
                                 <p className="text-xs text-muted-foreground mt-1">Mon-Sun, 9AM - 9PM</p>
                             </div>
                         </div>

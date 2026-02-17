@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/auth-context'
 import { useState, useEffect } from 'react'
 import { storage } from '@/lib/storage'
-import { Booking } from '@/types'
+import { Booking, User } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -18,24 +18,41 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 import { BookingModal } from '@/components/booking-modal'
+import { ProfileCompletionForm } from '@/components/profile-completion-form'
 
 export default function CustomerDashboard() {
     const { user } = useAuth()
+    const [currentUser, setCurrentUser] = useState<User | null>(null)
     const [bookings, setBookings] = useState<Booking[]>([])
     const [loading, setLoading] = useState(true)
     const [isBookingOpen, setIsBookingOpen] = useState(false)
 
+    const isProfileIncomplete = !user ||
+        user.name === 'Guest Customer' ||
+        !user.pincode ||
+        !user.whatsapp
+
     useEffect(() => {
         if (user) {
-            storage.getBookings().then(all => {
+            setCurrentUser(user)
+            storage.getBookings().then((all) => {
                 const myBookings = all.filter(b => b.customerId === user.id || b.customerEmail === user.email)
                 setBookings(myBookings)
                 setLoading(false)
             })
         }
     }, [user])
+
+    const handleProfileComplete = (updatedUser: User) => {
+        setCurrentUser(updatedUser)
+        // Refresh session
+        localStorage.setItem('vetri_session', JSON.stringify(updatedUser))
+        window.location.reload() // Reload to ensure all components get the updated user
+    }
+
 
     const stats = [
         {
@@ -57,14 +74,18 @@ export default function CustomerDashboard() {
             color: 'text-green-400 bg-green-500/10'
         },
         {
-            label: 'Outstanding Balance',
-            value: `₹${bookings.reduce((acc, b) => acc + (b.balanceAmount || 0), 0).toLocaleString()}`,
-            icon: CreditCard,
+            label: 'Latest Update',
+            value: bookings.length > 0 ? (bookings[0].status === 'CONFIRMED' ? 'Confirmed' : 'Pending') : 'N/A',
+            icon: Sparkles,
             color: 'text-orange-400 bg-orange-500/10'
         },
     ]
 
     if (loading) return <div>Loading dashboard...</div>
+
+    if (isProfileIncomplete && user) {
+        return <ProfileCompletionForm user={user} onComplete={handleProfileComplete} />
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -163,10 +184,6 @@ export default function CustomerDashboard() {
                                                 </Link>
                                             </div>
                                         </div>
-                                        {/* Progress bar visual for payment */}
-                                        <div className="w-full h-1 bg-white/5">
-                                            <div className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]" style={{ width: `${Math.min(100, ((booking.amount - (booking.balanceAmount || 0)) / booking.amount) * 100)}%` }}></div>
-                                        </div>
                                     </CardContent>
                                 </Card>
                             ))}
@@ -174,46 +191,20 @@ export default function CustomerDashboard() {
                     )}
                 </div>
 
-                {/* Side Content: Payment Notice */}
-                <div className="space-y-6">
-                    <Card className="glass-dark border-primary/20 bg-primary/5 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:scale-125 transition-transform duration-500">
-                            <Sparkles className="w-12 h-12 text-primary" />
-                        </div>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-primary">
-                                <CreditCard className="w-5 h-5" /> Payment Notice
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-balance">Ensure your **Advance** is paid to confirm your slot for the wedding season!</p>
-                            <div className="p-4 bg-background/50 rounded-xl border border-white/5 space-y-2">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Next Payment Due</span>
-                                    <span className="font-bold">Immediate</span>
-                                </div>
-                                <div className="text-xl font-bold">₹{bookings.filter(b => b.status === 'PENDING').reduce((acc, b) => acc + (b.advanceAmount || (b.amount * 0.2)), 0).toLocaleString()}</div>
-                            </div>
-                            <Button className="w-full bg-primary text-background font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
-                                Pay via UPI
-                            </Button>
-                        </CardContent>
-                    </Card>
 
-                    <Card className="glass-dark border-white/5">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <AlertCircle className="w-5 h-5 text-blue-400" /> Need Help?
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-xs text-muted-foreground">Having trouble with your booking or technical issues? Our support is available 24/7.</p>
-                            <Button variant="outline" className="w-full text-xs font-bold border-white/10 hover:bg-white/5">
-                                Open Support Ticket
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
+                <Card className="glass-dark border-white/5">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5 text-blue-400" /> Need Help?
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-xs text-muted-foreground">Having trouble with your booking or technical issues? Our support is available 24/7.</p>
+                        <Button variant="outline" className="w-full text-xs font-bold border-white/10 hover:bg-white/5">
+                            Open Support Ticket
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     )

@@ -11,16 +11,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BookingModal } from '@/components/booking-modal'
 import { MusicalNotes } from '@/components/musical-notes'
-import { Music, Zap, Users, Phone, MapPin, Clock, Star, Video, Volume2, Sparkles, LayoutDashboard, LogIn, ChevronRight, User as UserIcon } from 'lucide-react'
+import { Music, Zap, Users, Phone, MapPin, Clock, Star, Video, Volume2, VolumeX, Sparkles, LayoutDashboard, LogIn, ChevronRight, User as UserIcon } from 'lucide-react'
 
 export default function Page() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [packages, setPackages] = useState<EventPackage[]>([])
+  const [isMuted, setIsMuted] = useState(true)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const { user } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     storage.getPackages().then(setPackages)
+
     // Check for return URL actions
     const params = new URLSearchParams(window.location.search)
     if (params.get('action') === 'book' && user) {
@@ -125,19 +128,6 @@ export default function Page() {
                   </a>
                 </Button>
               </div>
-
-              <div className="flex items-center gap-8 pt-6 border-t border-white/5">
-                {[
-                  { label: 'Events Run', value: '500+' },
-                  { label: 'Happy Clients', value: '450+' },
-                  { label: 'Crew Members', value: '15' },
-                ].map((stat, i) => (
-                  <div key={i} className="space-y-1">
-                    <p className="text-2xl font-bold text-white">{stat.value}</p>
-                    <p className="text-[10px] uppercase tracking-widest text-primary/60 font-bold">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="relative group p-4">
@@ -162,6 +152,52 @@ export default function Page() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Video Showcase Section */}
+      <section className="py-32 relative bg-white/[0.02]">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-20 space-y-6">
+            <Badge className="bg-primary/10 text-primary border-primary/20 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]">Experience</Badge>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter">
+              SEE US IN <span className="text-gradient-gold">ACTION</span>
+            </h2>
+            <div className="w-24 h-1 bg-primary mx-auto" />
+          </div>
+
+          <div className="max-w-6xl mx-auto relative group">
+            <div className="absolute -inset-4 bg-primary/10 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="relative rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+              <video
+                ref={videoRef}
+                autoPlay
+                loop
+                muted={isMuted}
+                playsInline
+                className="w-full h-auto"
+              >
+                <source src="/Landing Video.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+
+              {/* Mute/Unmute Button */}
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                className="absolute bottom-8 right-8 w-14 h-14 rounded-full glass backdrop-blur-md border-white/10 flex items-center justify-center hover:bg-primary hover:border-primary transition-all duration-500 group/btn"
+                aria-label={isMuted ? "Unmute video" : "Mute video"}
+              >
+                {isMuted ? (
+                  <VolumeX className="w-6 h-6 text-white group-hover/btn:text-background transition-colors" />
+                ) : (
+                  <Volume2 className="w-6 h-6 text-primary group-hover/btn:text-background transition-colors" />
+                )}
+              </button>
+
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-background/20 via-transparent to-transparent pointer-events-none" />
             </div>
           </div>
         </div>
@@ -278,9 +314,7 @@ export default function Page() {
                     <h4 className={`text-xl font-bold tracking-tighter ${pkg.isPopular ? 'text-background/60' : 'text-white/60'}`}>
                       {pkg.name.toUpperCase()}
                     </h4>
-                    <p className={`font-black tracking-tight ${pkg.isPopular ? 'text-6xl text-background leading-none' : 'text-4xl text-white'}`}>
-                      ₹{pkg.price.toLocaleString()}
-                    </p>
+                    {/* Financial data hidden from customers as per request */}
                   </div>
                   <ul className="space-y-6">
                     {pkg.features.map((feature, i) => (
@@ -339,7 +373,7 @@ export default function Page() {
               <ul className="space-y-4">
                 <li className="flex items-start gap-4 text-white/50 font-light group cursor-pointer">
                   <Phone className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="group-hover:text-white transition-colors">+91 63815 44170</span>
+                  <span className="group-hover:text-white transition-colors">+91 6381 544 170</span>
                 </li>
                 <li className="flex items-start gap-4 text-white/50 font-light group cursor-pointer">
                   <MapPin className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />

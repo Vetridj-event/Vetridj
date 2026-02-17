@@ -1,0 +1,63 @@
+# Hosting & Infrastructure Cost Analysis (Budget: Under ₹4,500/Year)
+
+This document outlines a highly optimized hosting strategy for the Vetri DJ Booking System, strictly keeping annual costs **under ₹4,500**.
+
+## 1. Cost Breakdown
+
+| Category | Service Provider | Plan Details | Approx. Monthly Cost | Approx. Annual Cost |
+| :--- | :--- | :--- | :--- | :--- |
+| **Node.js VPS** | **RackNerd / Hetzner** | 1GB - 2GB RAM | ~₹315 ($3.75) | **₹3,780** |
+| **Database** | **MongoDB Atlas** | Shared Cluster (M0) | **₹0** (Free Tier) | **₹0** |
+| **WhatsApp API** | **Meta Cloud API (Direct)** | 1000 Free Conversations | **₹0** (Pay-as-you-go) | **₹0** |
+| **Domain Name** | **GoDaddy / BigRock** | **.in** Domain | - | **₹500 - ₹600** |
+| **Total** | | | **~₹315 / month** | **~₹4,280 - ₹4,380 / year** |
+
+---
+
+## 2. Detailed Strategy
+
+### A. Node.js Hosting (VPS)
+**Recommendation: RackNerd (Offers), Hetzner CLoud, or DigitalOcean (Basic)**
+*   **Strategy**: To hit the <₹4.5k target, we must cap VPS spend at **$4/month**.
+*   **Top Picks**:
+    *   **Hetzner Cloud (CPX11)**: Excellent performance at ~€3.79/mo.
+    *   **RackNerd**: Often has "Black Friday" style deals for ~$25-30/year (approx ₹2,500) if purchased annually.
+    *   **DigitalOcean**: Basic Droplet at $4/mo (₹340/mo).
+
+### B. Database (MongoDB)
+**Recommendation: MongoDB Atlas (M0 Free Tier)**
+*   **Why?**:
+    *   **Cost**: Completely free forever.
+    *   **Capacity**: 512MB storage (enough for thousands of bookings/users initially).
+    *   **Scalability**: Can upgrade to M2 (~₹750/mo) only when traffic grows significantly.
+*   **Backup Plan**: If M0 limits are hit, migrate to a self-hosted MongoDB on the VPS (saves M2 cost but uses VPS resources).
+
+### C. WhatsApp API
+**Recommendation: Meta Cloud API (Direct Integration)**
+*   **Cost Structure**:
+    *   **First 1,000 Conversations/Month**: **FREE**.
+    *   **After 1,000**:
+        *   Marketing (Promotions): ~₹0.80 per conversation.
+        *   Utility (Booking updates): ~₹0.30 per conversation.
+        *   Service (User initiates): ~₹0.29 per conversation.
+*   **Why Direct API?**:
+    *   Third-party tools (WATI, Interakt) charge monthly subscription fees (~₹2000+/mo) which would blow the budget.
+    *   Direct integration only costs per message after the free tier.
+*   **Requirement**: A valid Facebook Business Manager account and a credit card on file (charged only if limits exceeded).
+
+---
+
+## 3. Scaling Plan (If Budget Increases)
+
+If the business grows and the ₹5.8k budget can be expanded:
+
+1.  **Upgrade Database**: Move to MongoDB Atlas M2 (~₹9/mo) for automated backups and higher throughput.
+2.  **Upgrade VPS**: Move to a $10-12/mo plan (2GB RAM) for faster speeds during peak wedding seasons.
+3.  **WhatsApp Marketing**: Allocate a monthly budget (~₹500-1000) for proactive marketing campaigns beyond the free limit.
+
+## 4. Immediate Action Items
+
+1.  **Sign up for Railway/DigitalOcean**: Create an account and deploy the [main](file:///Users/barathvijay/Downloads/vetri-dj-booking-system/app/admin/finance/ledger/page.tsx#115-123) branch.
+2.  **Configure MongoDB Atlas**: Ensure the M0 cluster is active and whitelisted for production.
+3.  **Register Meta Developer Account**: Set up the WhatsApp Cloud API app and generate system user tokens.
+4.  **Buy Domain**: Purchase the domain name and point DNS to the VPS.

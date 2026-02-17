@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { MusicalNotes } from '@/components/musical-notes'
-import { Loader2, User, Mail, Lock, Phone, MessageSquare, ChevronLeft } from 'lucide-react'
+import { Loader2, User, Phone, MessageSquare, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 export default function RegisterPage() {
     const [step, setStep] = useState(1)
@@ -23,7 +24,7 @@ export default function RegisterPage() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (step < 3) {
+        if (step < 2) {
             setStep(step + 1)
             return
         }
@@ -32,15 +33,16 @@ export default function RegisterPage() {
         setError('')
 
         try {
+            const normalizedPhone = phone.replace(/\D/g, '').length > 10 ? phone.replace(/\D/g, '').slice(-10) : phone.replace(/\D/g, '')
             const res = await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name,
-                    email,
-                    password,
-                    phone,
-                    whatsapp: whatsapp || phone, // Default whatsapp to phone if empty
+                    email: `${normalizedPhone}@customer.com`, // Internal fallback
+                    password: 'otp_auth', // Default for OTP users
+                    phone: normalizedPhone,
+                    whatsapp: (whatsapp || phone).replace(/\D/g, '').length > 10 ? (whatsapp || phone).replace(/\D/g, '').slice(-10) : (whatsapp || phone).replace(/\D/g, ''),
                     role: 'CUSTOMER'
                 })
             })
@@ -48,8 +50,9 @@ export default function RegisterPage() {
             if (res.ok) {
                 const params = new URLSearchParams(window.location.search)
                 const returnUrl = params.get('returnUrl')
-                const redirectPath = returnUrl ? `/login?registered=true&returnUrl=${encodeURIComponent(returnUrl)}` : '/login?registered=true'
+                const redirectPath = `/login?registered=true&identifier=${normalizedPhone}` + (returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : '')
                 router.push(redirectPath)
+                toast.success('Registration successful! Use OTP to log in.')
             } else {
                 const data = await res.json()
                 setError(data.error || 'Registration failed')
@@ -77,7 +80,7 @@ export default function RegisterPage() {
                 <Card className="glass-dark border-white/10 shadow-2xl">
                     <CardHeader className="text-center">
                         <div className="flex justify-center gap-2 mb-4">
-                            {[1, 2, 3].map((s) => (
+                            {[1, 2].map((s) => (
                                 <div
                                     key={s}
                                     className={`h-1.5 w-12 rounded-full transition-all duration-500 ${step >= s ? 'bg-primary' : 'bg-white/10'}`}
@@ -87,12 +90,10 @@ export default function RegisterPage() {
                         <CardTitle className="text-2xl font-bold">
                             {step === 1 && "What's your name?"}
                             {step === 2 && "How can we reach you?"}
-                            {step === 3 && "Create your account"}
                         </CardTitle>
                         <CardDescription>
                             {step === 1 && "Let's start with your full name"}
                             {step === 2 && "Enter your contact details for bookings"}
-                            {step === 3 && "Set your credentials to manage your bookings"}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -152,42 +153,6 @@ export default function RegisterPage() {
                                 </div>
                             )}
 
-                            {step === 3 && (
-                                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email">Email Address</Label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="email@example.com"
-                                                className="pl-10 bg-white/5 border-white/10 h-11"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
-                                                required
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="password">Create Password</Label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                                            <Input
-                                                id="password"
-                                                type="password"
-                                                placeholder="••••••••"
-                                                className="pl-10 bg-white/5 border-white/10 h-11"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             {error && (
                                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center rounded-lg">
                                     {error}
@@ -211,7 +176,7 @@ export default function RegisterPage() {
                                     className="flex-[2] h-11 bg-primary text-background font-bold shadow-lg shadow-primary/20"
                                     disabled={loading}
                                 >
-                                    {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : (step === 3 ? 'Complete Registration' : 'Next Step')}
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : (step === 2 ? 'Complete Registration' : 'Next Step')}
                                 </Button>
                             </div>
                         </form>
